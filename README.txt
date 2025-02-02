@@ -10,10 +10,6 @@ You can open the developer console by pressing ~ while in-game.
 
 Console Commands:
 
-=== +flask_aim and -flask_aim ===
-Turn on or off the aimbot
-If the aimbot has found a target it will aim your camera towards that target
-
 === flask_open_gui ===
 Opens the GUI where you can enable and disable the various settings.
 
@@ -24,6 +20,10 @@ Opens a list of all players in the server, select a player by clicking on their 
 Log Player Info: prints info about the selected player in the console.
 
 Set Target: sets the aimbot's target to the selected player and also turns on target lock.
+
+
+=== flask_open_bind ===
+Opens a menu where you can change your keybinds for stuff like aimbot/triggerbot
 
 
 
@@ -43,6 +43,7 @@ another main feature, it draws the player's name and their health through walls.
 
 === Chams ===
 draws a bounding box around all props
+you can select which type of entity to draw a bounding box around
 
 
 === Free Camera ===
@@ -64,4 +65,6 @@ just like auto-strafe this can be enabled in the menu
 
 
 === Trigger Bot ===
-there's currently no trigger-bot yet
+automatically fires your weapon if there is a valid enemy under the mouse
+
+You can set a keybind for triggerbot using flask_open_bind.
