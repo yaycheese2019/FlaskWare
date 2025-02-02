@@ -17,3 +17,9 @@ CreateClientConVar("flask_recoil", "0", false, false, "Remove view punch angles 
 CreateClientConVar("flask_bhop", "0", false, false, "Jump automatically when space is held down.", 0, 1 )
 
 CreateClientConVar("flask_autostrafe", "0", false, false, "Automatically strafe while in the air", 0, 1 )
+
+CreateClientConVar("flask_trigger", "0", false, false, "Fire your weapon when pointing at a target", 0, 1 )
+
+CreateClientConVar("flask_aimkey", "", false, false)
+
+CreateClientConVar("flask_triggerkey", "", false, false)

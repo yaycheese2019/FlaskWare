@@ -17,6 +17,9 @@ flask_cham_enable = GetConVar("flask_cham_enable")
 flask_recoil = GetConVar("flask_recoil")
 flask_bhop = GetConVar("flask_bhop")
 flask_autostrafe = GetConVar("flask_autostrafe")
+flask_trigger = GetConVar("flask_trigger")
+flask_aimkey = GetConVar("flask_aimkey")
+flask_triggerkey = GetConVar("flask_triggerkey")
 
 --[[
 	Features:
@@ -46,17 +49,6 @@ flask_autostrafe = GetConVar("flask_autostrafe")
 	also have a list of players that are currently in the server
 	don't update the list every frame, have a button that can update it once
 ]]--
-
-
-local SHOULD_AIM = false
-
-concommand.Add( "-flask_aim", function( ply, cmd, args )
-	SHOULD_AIM = false
-end )
-
-concommand.Add( "+flask_aim", function( ply, cmd, args )
-	SHOULD_AIM = true
-end )
 
 concommand.Add( "flask_target", function( ply, cmd, args )
 	target = Entity(tonumber(flask_selected))
@@ -296,7 +288,7 @@ hook.Add( "CreateMove", "buaMove", function(cmd)
 	end
 	
 	local should_autoshoot = flask_autoshoot:GetBool()
-	if SHOULD_AIM or should_autoshoot then
+	if input.IsKeyDown(flask_aimkey:GetInt()) or should_autoshoot then
 		if (target && target:IsValid()) then
 			local org = target:GetPos() + target:OBBCenter()
 			
@@ -314,4 +306,15 @@ hook.Add( "CreateMove", "buaMove", function(cmd)
 			end
 		end
 	end
+	
+	-- trigger bot
+	if flask_trigger:GetBool() then
+		if input.IsKeyDown(flask_triggerkey:GetInt()) then
+			local trc = LocalPlayer():GetEyeTrace().Entity
+			if buaValid(trc) then
+				cmd:AddKey(IN_ATTACK)
+			end
+		end
+	end
+
 end )

@@ -25,6 +25,13 @@ concommand.Add( "flask_open_gui", function( ply, cmd, args )
 		GetConVar("flask_autoshoot"):SetInt(data)
 	end
 	
+	local Row11 = DProperties:CreateRow( "Global", "TriggerBot" )
+	Row11:Setup( "Boolean" )
+	Row11:SetValue(GetConVar("flask_trigger"):GetBool())
+	Row11.DataChanged = function( self, data )
+		GetConVar("flask_trigger"):SetInt(data)
+	end
+	
 	local Row8 = DProperties:CreateRow( "Global", "No Recoil" )
 	Row8:Setup( "Boolean" )
 	Row8:SetValue(GetConVar("flask_recoil"):GetBool())
@@ -89,8 +96,22 @@ concommand.Add( "flask_open_list", function( ply, cmd, args )
 	AppList:SetMultiSelect( false )
 	AppList:AddColumn( "Name" )
 	AppList:AddColumn( "Index" )
-	AppList.OnRowSelected = function( lst, index, pnl )
-		flask_selected = pnl:GetColumnText( 2 )
+	AppList.OnRowRightClick = function( panel, rowIndex, row )
+		flask_selected = row:GetValue( 2 )
+		local Menu = DermaMenu()
+		
+		Menu:AddOption("Mark as target", function(pnl)
+			RunConsoleCommand("flask_target", tostring(flask_selected))
+		end)
+		Menu:AddOption("Grab Info", function(pnl)
+			local ply = Entity(flask_selected)
+			print(ply:Nick())
+			print(ply:SteamID())
+			print(ply:GetWeaponColor())
+			print(ply:GetPlayerColor())
+		end)
+
+		Menu:Open()
 	end
 	
 	for _, ply in player.Iterator() do
@@ -99,27 +120,36 @@ concommand.Add( "flask_open_list", function( ply, cmd, args )
 		end
 	end
 	
-	local b1 = vgui.Create( "DButton", f )
-	b1:SetText( "Mark selected player as target" )
-	b1:Dock(BOTTOM)
-	b1.DoClick = function()
-		if flask_selected != "0" then
-			RunConsoleCommand("flask_target", flask_selected)
-		end
+end )
+
+concommand.Add( "flask_open_bind", function( ply, cmd, args )
+	local f = vgui.Create( "DFrame" )
+	f:SetSize( 500, 300 )
+	f:Center()
+	f:SetTitle("Input Menu")
+	f:MakePopup()
+	
+	local T1 = vgui.Create( "DLabel", f )
+	T1:Dock(BOTTOM)
+	T1:SetText("Aim Key")
+
+	local B1 = vgui.Create( "DBinder", f )
+	B1:Dock(BOTTOM)
+	B1:SetValue(GetConVar("flask_aimkey"):GetInt())
+	
+	function B1:OnChange( num )
+		GetConVar("flask_aimkey"):SetInt(num)
 	end
 	
-	local b2 = vgui.Create( "DButton", f )
-	b2:SetText( "Log player's info" )
-	b2:Dock(BOTTOM)
-	b2.DoClick = function()
-		local ent = Entity(flask_selected)
-		if ent:IsValid() then
-			print("Name:  "..ent:Nick())
-			print("Steam ID:  "..ent:SteamID())
-			print("Weapon Color:  "..tostring(ent:GetWeaponColor()))
-			print("Player Color:  "..tostring(ent:GetPlayerColor()))
-			print("Player Model:  "..ent:GetModel())
-		end
-	end
+	local T2 = vgui.Create( "DLabel", f )
+	T2:Dock(BOTTOM)
+	T2:SetText("Trigger Key")
+
+	local B2 = vgui.Create( "DBinder", f )
+	B2:Dock(BOTTOM)
+	B2:SetValue(GetConVar("flask_triggerkey"):GetInt())
 	
+	function B2:OnChange( num )
+		GetConVar("flask_triggerkey"):SetInt(num)
+	end
 end )
