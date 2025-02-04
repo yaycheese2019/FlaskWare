@@ -2,6 +2,7 @@ local target = nil
 local buaInNoclip = false
 local buaNoclipOrigin = Vector(0,0,0)
 local buaTime = 0
+local wasOnGround = true
 
 flask_selected = nil
 
@@ -18,8 +19,11 @@ flask_recoil = GetConVar("flask_recoil")
 flask_bhop = GetConVar("flask_bhop")
 flask_autostrafe = GetConVar("flask_autostrafe")
 flask_trigger = GetConVar("flask_trigger")
+flask_aimbot = GetConVar("flask_aimbot")
 flask_aimkey = GetConVar("flask_aimkey")
 flask_triggerkey = GetConVar("flask_triggerkey")
+flask_sort = GetConVar("flask_sort")
+flask_range = GetConVar("flask_range")
 
 --[[
 	Features:
@@ -102,16 +106,16 @@ hook.Add( "Think", "buaThink", function()
 	if !flask_lock:GetBool() then
 		target = nil
 		local dist = nil
-		local maxdist = 32768
+		local maxdist = flask_range:GetFloat()
 		local eye = plr:EyePos()
+		local sort = flask_sort:GetInt()
+		
 		if(buaInNoclip) then
 			eye = buaNoclipOrigin
 		end
 		for _, ply in ents.Iterator() do
 			if(buaValid(ply)) then
 				local org = ply:EyePos()
-				org = org + ply:GetAbsVelocity() * (CurTime() - buaTime)
-				org = org - plr:GetAbsVelocity() * (CurTime() - buaTime)
 				local tr = util.TraceLine( {
 					start = 	eye,
 					endpos =	org,
@@ -120,8 +124,12 @@ hook.Add( "Think", "buaThink", function()
 				} )
 				if (tr.Fraction >= 0.99) then
 					dist = (ply:EyePos() - eye)
-					dist:Normalize()
-					dist = (dist - plr:GetForward()):Length()
+					if sort == 2 then
+						dist:Normalize()
+						dist = (dist - plr:GetForward()):Length()
+					else
+						dist = dist:Length()
+					end
 					if(dist <= maxdist) then
 						target = ply
 						maxdist = dist
@@ -163,6 +171,7 @@ hook.Add( "PostDrawTranslucentRenderables", "buaDraw", function()
 end )
 
 hook.Add( "HUDPaint", "buaHud", function()
+	if ( !flask_esp:GetBool() ) then return end
 	local col = nil
 	for _, ent in ents.Iterator() do
 		if(buaValid(ent)) then
@@ -245,6 +254,9 @@ function perfectDelta(speed, plr)
 end
 
 function buaAutoStrafe(plr,cmd)
+
+	if !flask_autostrafe:GetBool() then return end
+	
 	local speed = plr:GetVelocity():Length2D()
 	if speed < 2.0 then return end
 	local vel = plr:GetVelocity()
@@ -269,6 +281,7 @@ function buaAutoStrafe(plr,cmd)
 		cmd:SetForwardMove(math.cos(moveDir) * cl_sidespeed)
 		cmd:SetSideMove(-math.sin(moveDir) * cl_sidespeed)
 	end
+	return
 end
 
 hook.Add( "CreateMove", "buaMove", function(cmd)
@@ -282,27 +295,31 @@ hook.Add( "CreateMove", "buaMove", function(cmd)
 		if flask_bhop:GetBool() then
 			cmd:RemoveKey(IN_JUMP)
 		end
-		if flask_autostrafe:GetBool() then
+		buaAutoStrafe(LocalPlayer(),cmd)
+	else
+		if !wasOnGround then
 			buaAutoStrafe(LocalPlayer(),cmd)
 		end
 	end
 	
 	local should_autoshoot = flask_autoshoot:GetBool()
-	if input.IsKeyDown(flask_aimkey:GetInt()) or should_autoshoot then
-		if (target && target:IsValid()) then
-			local org = target:GetPos() + target:OBBCenter()
-			
-			-- prediction
-			org = org + target:GetAbsVelocity() * engine.TickInterval()
-			org = org - LocalPlayer():GetAbsVelocity() * engine.TickInterval()
-			
-			local angs = (org - LocalPlayer():GetShootPos()):Angle()
-			if flask_recoil:GetBool() then
-				angs = angs - LocalPlayer():GetViewPunchAngles()
-			end
-			cmd:SetViewAngles(angs)
-			if should_autoshoot then
-				cmd:AddKey(IN_ATTACK) -- Shoot if autoshoot is enabled
+	if flask_aimbot:GetBool() then
+		if input.IsKeyDown(flask_aimkey:GetInt()) or should_autoshoot then
+			if (target && target:IsValid()) then
+				local org = target:GetPos() + target:OBBCenter()
+				
+				-- prediction
+				org = org + target:GetAbsVelocity() * engine.TickInterval()
+				org = org - LocalPlayer():GetAbsVelocity() * engine.TickInterval()
+				
+				local angs = (org - LocalPlayer():GetShootPos()):Angle()
+				if flask_recoil:GetBool() then
+					angs = angs - LocalPlayer():GetViewPunchAngles()
+				end
+				cmd:SetViewAngles(angs)
+				if should_autoshoot then
+					cmd:AddKey(IN_ATTACK) -- Shoot if autoshoot is enabled
+				end
 			end
 		end
 	end
@@ -314,6 +331,15 @@ hook.Add( "CreateMove", "buaMove", function(cmd)
 			if buaValid(trc) then
 				cmd:AddKey(IN_ATTACK)
 			end
+		end
+	end
+	wasOnGround = LocalPlayer():IsOnGround()
+
+	if input.IsKeyDown(KEY_LALT) then
+		if LocalPlayer():GetActiveWeapon():GetClass() == "weapon_newtphysgun" then
+			cmd:SetMouseWheel(-10) -- pull player in the reverse direction like a grapplnig hook
+		else
+			cmd:SetMouseWheel(10) -- assume the player is holding a prop, push it back
 		end
 	end
 
