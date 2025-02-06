@@ -2,9 +2,9 @@ local target = nil
 local buaInNoclip = false
 local buaNoclipOrigin = Vector(0,0,0)
 local buaTime = 0
-local wasOnGround = true
 
 flask_selected = nil
+flask_ignore = {}
 
 include("mainGui.lua")
 include("mainConVars.lua")
@@ -24,34 +24,34 @@ flask_aimkey = GetConVar("flask_aimkey")
 flask_triggerkey = GetConVar("flask_triggerkey")
 flask_sort = GetConVar("flask_sort")
 flask_range = GetConVar("flask_range")
+flask_propkey = GetConVar("flask_propkey")
+flask_prop_push = GetConVar("flask_prop_push")
+flask_prop_push_delta = GetConVar("flask_prop_push_delta")
 
 --[[
 	Features:
 	- AimBot
-	- Silent Aimbot
-	- Autoshoot
+	- Aim Key
+	- AutoShoot
+	- TriggerBot
+	- Trigger Key
+	- Auto Prop Push
+	- Auto Prop Push Key
+	- Auto Prop Push Delta
+	- Bhop
+	- Autostrafe
+	
 	- ESP
-	- FreeCam
-	- Chams
-	- GUI
-	- Player List
+	- Target POV
+	- Target Lock
+	- Entity Chams
+	- Anti Recoil
+	- Sorting Method
+	- Max Range
+	
+	- Target Ignore
 	
 	- Targets players, NPCs, nextbots
-]]--
-
---[[
-	Planned Features:
-	- Autostrafe
-	automatically strafe around to gain speed
-	or automatically press A or D depending on the direction that you're turning
-	
-	- a menu
-	a GUI with different settings and checkboxes to customize the aimbot
-	so you don't need to use the console commands
-	make sure to also have an option to change the menu color
-	
-	also have a list of players that are currently in the server
-	don't update the list every frame, have a button that can update it once
 ]]--
 
 concommand.Add( "flask_target", function( ply, cmd, args )
@@ -80,8 +80,9 @@ end )
 function buaValid(e)
 	-- If true then the entity can be targeted.
 	
-	if(!e:IsValid()) then return false end
-	if(e == LocalPlayer()) then return false end
+	if(!e:IsValid()) then return false end -- Don't target NULL
+	if(e == LocalPlayer()) then return false end -- Don't target self
+	if flask_ignore[e:EntIndex()] then return false end -- Check if target is ignored
 	
 	if(e:IsPlayer() && e:Alive()) then return true end
 	if(e:IsNPC()) then return true end
@@ -93,6 +94,9 @@ end
 function buaColor(e)
 	if(target == e) then
 		return Color(255,0,0)
+	end
+	if(e:IsPlayer() && e:IsAdmin()) then
+		return Color(0,64,255)
 	end
 	return Color(255,255,255)
 end
@@ -242,10 +246,10 @@ hook.Add( "CalcView", "buaCalcView", function( ply, pos, angles, fov )
 end )
 
 function perfectDelta(speed, plr)
-	local speedVar = plr:GetMaxSpeed()
+	local speedVar = plr:GetMaxSpeed() * 100
 	local airVar = GetConVar("sv_airaccelerate"):GetFloat()
 	local wishSpeed = 90.0
-	local term = wishSpeed / airVar / speedVar * 100.0 / speed
+	local term = wishSpeed / airVar / speedVar / speed
 	
 	if (term < 1.0 && term > -1.0) then
 		return math.acos(term)
@@ -266,7 +270,7 @@ function buaAutoStrafe(plr,cmd)
 		local yaw = math.rad(cmd:GetViewAngles().y)
 		local velDir = math.atan2(vel.y, vel.x) - yaw
 		local wishAng = math.atan2(-cmd:GetSideMove(), cmd:GetForwardMove())
-		local delta = math.rad(math.AngleDifference(math.deg(velDir), math.deg(wishAng)))
+		local delta = math.AngleDifference(math.deg(velDir), math.deg(wishAng))
 		
 		local moveDir = nil
 		
@@ -284,6 +288,56 @@ function buaAutoStrafe(plr,cmd)
 	return
 end
 
+function RunAimBot(cmd)
+	
+	local k = flask_aimkey:GetInt()
+	if k > 0 then
+		if !input.IsKeyDown(k) then return end
+	end
+	
+	if (target && target:IsValid()) then
+		local org = target:GetPos() + target:OBBCenter()
+		
+		-- prediction
+		org = org + target:GetAbsVelocity() * engine.TickInterval()
+		org = org - LocalPlayer():GetAbsVelocity() * engine.TickInterval()
+		
+		local angs = (org - LocalPlayer():GetShootPos()):Angle()
+		if flask_recoil:GetBool() then
+			angs = angs - LocalPlayer():GetViewPunchAngles()
+		end
+		cmd:SetViewAngles(angs)
+		if flask_autoshoot:GetBool() then
+			cmd:AddKey(IN_ATTACK) -- Shoot if autoshoot is enabled
+		end
+	end
+end
+
+function RunTrigger(cmd)
+	local k = flask_triggerkey:GetInt()
+	
+	if k > 0 then
+		if !input.IsKeyDown(k) then return end
+	end
+	
+	
+	local trc = LocalPlayer():GetEyeTrace().Entity
+	if buaValid(trc) then
+		cmd:AddKey(IN_ATTACK)
+	end
+	
+end
+
+function RunPropPush(cmd)
+	local k = flask_propkey:GetInt()
+	
+	if k > 0 then
+		if !input.IsKeyDown(k) then return end
+	end
+	
+	cmd:SetMouseWheel(flask_prop_push_delta:GetInt())
+end
+
 hook.Add( "CreateMove", "buaMove", function(cmd)
 	if buaInNoclip then
 		cmd:ClearMovement() -- Freeze Input if you are in noclip mode
@@ -296,51 +350,18 @@ hook.Add( "CreateMove", "buaMove", function(cmd)
 			cmd:RemoveKey(IN_JUMP)
 		end
 		buaAutoStrafe(LocalPlayer(),cmd)
-	else
-		if !wasOnGround then
-			buaAutoStrafe(LocalPlayer(),cmd)
-		end
 	end
 	
-	local should_autoshoot = flask_autoshoot:GetBool()
 	if flask_aimbot:GetBool() then
-		if input.IsKeyDown(flask_aimkey:GetInt()) or should_autoshoot then
-			if (target && target:IsValid()) then
-				local org = target:GetPos() + target:OBBCenter()
-				
-				-- prediction
-				org = org + target:GetAbsVelocity() * engine.TickInterval()
-				org = org - LocalPlayer():GetAbsVelocity() * engine.TickInterval()
-				
-				local angs = (org - LocalPlayer():GetShootPos()):Angle()
-				if flask_recoil:GetBool() then
-					angs = angs - LocalPlayer():GetViewPunchAngles()
-				end
-				cmd:SetViewAngles(angs)
-				if should_autoshoot then
-					cmd:AddKey(IN_ATTACK) -- Shoot if autoshoot is enabled
-				end
-			end
-		end
+		RunAimBot(cmd)
 	end
-	
-	-- trigger bot
-	if flask_trigger:GetBool() then
-		if input.IsKeyDown(flask_triggerkey:GetInt()) then
-			local trc = LocalPlayer():GetEyeTrace().Entity
-			if buaValid(trc) then
-				cmd:AddKey(IN_ATTACK)
-			end
-		end
-	end
-	wasOnGround = LocalPlayer():IsOnGround()
 
-	if input.IsKeyDown(KEY_LALT) then
-		if LocalPlayer():GetActiveWeapon():GetClass() == "weapon_newtphysgun" then
-			cmd:SetMouseWheel(-10) -- pull player in the reverse direction like a grapplnig hook
-		else
-			cmd:SetMouseWheel(10) -- assume the player is holding a prop, push it back
-		end
+	if flask_trigger:GetBool() then
+		RunTrigger(cmd)
+	end
+
+	if flask_prop_push:GetBool() then
+		RunPropPush(cmd)
 	end
 
 end )

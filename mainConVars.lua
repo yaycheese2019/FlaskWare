@@ -26,6 +26,12 @@ CreateClientConVar("flask_aimkey", "", false, false)
 
 CreateClientConVar("flask_triggerkey", "", false, false)
 
+CreateClientConVar("flask_propkey", "", false, false)
+
 CreateClientConVar("flask_sort", "1", false, false)
 
 CreateClientConVar("flask_range", "32768", false, false)
+
+CreateClientConVar("flask_prop_push", "0", false, false)
+
+CreateClientConVar("flask_prop_push_delta", "10", false, false)

@@ -1,5 +1,11 @@
 
-function guiCheckBox(p1, p2, p3)
+surface.CreateFont("Font", {
+    font = "Arial",
+    extended = true,
+    size = 20
+})
+
+function guiCheckBox(p1, p2, p3, p4)
 	local check = vgui.Create("DCheckBoxLabel", p1)
 	check:Dock(TOP)
 	check:SetText(p2)
@@ -19,7 +25,7 @@ function guiSlider(p1,p2,p3,p4,p5,p6)
 
 end
 
-function guiBind(p1,p2,p3)
+function guiBind(p1,p2,p3,p4)
 	local T1 = vgui.Create( "DLabel", p1 )
 	T1:Dock(TOP)
 	T1:SetText(p2)
@@ -27,6 +33,7 @@ function guiBind(p1,p2,p3)
 	local B1 = vgui.Create( "DBinder", p1 )
 	B1:Dock(TOP)
 	B1:SetValue(GetConVar(p3):GetInt())
+	B1:SetTooltip(p4)
 
 	function B1:OnChange( num )
 		GetConVar(p3):SetInt(num)
@@ -35,16 +42,24 @@ function guiBind(p1,p2,p3)
 end
 
 concommand.Add( "flask_open_gui", function( ply, cmd, args )
-	local f = vgui.Create( "DFrame" )
-	f:SetSize( 500, 300 )
+	local Style_BG = Color(0, 0, 0, 200)
+	
+	local f = vgui.Create("DFrame")
+	f:SetSize(500, 300)
 	f:Center()
-	f:SetTitle("FlaskWare Settings")
+	f:SetTitle("")
 	f:MakePopup()
+
+	f.Paint = function(self, w, h)
+	    draw.RoundedBox(2, 0, 0, w, h, Style_BG)
+	    draw.SimpleText("FlaskWare Settings", "Font", 250, 5, color_white, TEXT_ALIGN_CENTER, TEXT_ALIGN_TOP)
+	end
 	
 	local sheet = vgui.Create( "DPropertySheet", f )
 	sheet:Dock( FILL )
 	
 	local Category1 = vgui.Create( "DPanel", sheet)
+	Category1:SetBackgroundColor(Style_BG)
 		guiCheckBox(Category1, "Aimbot", "flask_aimbot", "Enable or disable the aimbot.")
 		guiCheckBox(Category1, "AutoShoot", "flask_autoshoot", "Automatically shoot when a target is detected.")
 		guiCheckBox(Category1, "Trigger Bot", "flask_trigger", "Enable the triggerbot.")
@@ -54,6 +69,7 @@ concommand.Add( "flask_open_gui", function( ply, cmd, args )
 	sheet:AddSheet( "Global", Category1 )
 	
 	local Category2 = vgui.Create( "DPanel", sheet)
+	Category2:SetBackgroundColor(Style_BG)
 		guiCheckBox(Category2, "Enable ESP", "flask_esp", "Enable drawing ESP.")
 		guiCheckBox(Category2, "Enable Chams", "flask_cham_enable", "Enable entity chams.")
 		guiCheckBox(Category2, "Target POV", "flask_view", "View the world from the POV of the aimbot's target")
@@ -61,14 +77,19 @@ concommand.Add( "flask_open_gui", function( ply, cmd, args )
 	sheet:AddSheet( "Visual", Category2 )
 
 	local Category3 = vgui.Create( "DPanel", sheet)
+	Category3:SetBackgroundColor(Style_BG)
 		guiCheckBox(Category3, "Auto Jump", "flask_bhop", "Automatically jump when you hit the ground")
 		guiCheckBox(Category3, "Directional Strafe", "flask_autostrafe", "Strafe around in the air using the WASD keys.")
-	sheet:AddSheet( "Movement", Category3 )
+		guiCheckBox(Category3, "Prop Push", "flask_prop_push", "Automatically push the prop you're holding away from you")
+		guiSlider(Category3, "Prop Push Delta", "flask_prop_push_delta", "Controls how fast the prop should be pushed", -20, 20)
+	sheet:AddSheet( "Misc", Category3 )
 
 	local Category4 = vgui.Create( "DPanel", sheet)
-		guiBind(Category4, "Aim Key", "flask_aimkey")
-		guiBind(Category4, "Trigger Key", "flask_triggerkey")
-	sheet:AddSheet( "Movement", Category4 )
+	Category4:SetBackgroundColor(Style_BG)
+		guiBind(Category4, "Aim Key", "flask_aimkey", "Only aim if you're holding down this key")
+		guiBind(Category4, "Trigger Key", "flask_triggerkey", "Only trigger if you're holding down this key")
+		guiBind(Category4, "Prop Push Key", "flask_propkey", "Only prop push if you're holding down this key")
+	sheet:AddSheet( "Key binds", Category4 )
 end )
 
 concommand.Add( "flask_open_list", function( ply, cmd, args )
@@ -108,6 +129,13 @@ concommand.Add( "flask_open_list", function( ply, cmd, args )
 		Menu:AddOption("Steal Player Color", function(pnl)
 			local ply = Entity(flask_selected)
 			RunConsoleCommand("cl_playercolor", tostring(ply:GetPlayerColor()))
+		end)
+		Menu:AddSpacer()
+		Menu:AddOption("Add to ignore list", function(pnl)
+			flask_ignore[flask_selected] = true
+		end)
+		Menu:AddOption("Remove from ignore list", function(pnl)
+			flask_ignore[flask_selected] = nil
 		end)
 
 		Menu:Open()
